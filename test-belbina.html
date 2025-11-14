@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Test Belbina — interaktywny (anonimowy, offline)</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#06b6d4;--muted:#9aa4b2;--glass: rgba(255,255,255,0.03)}
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, Roboto, Arial; margin:0; padding:20px; background:linear-gradient(120deg,#071022 0%, #081428 100%); color:#e6eef6}
+    .container{max-width:1100px;margin:0 auto}
+    header{display:flex;align-items:center;gap:12px}
+    h1{margin:0;font-size:1.4rem}
+    .card{background:var(--card);padding:18px;border-radius:12px;margin-top:18px;box-shadow:0 6px 30px rgba(2,6,23,0.6)}
+    .q{padding:12px;border-radius:8px;background:var(--glass);margin-bottom:12px}
+    label{display:block;cursor:pointer;padding:6px;border-radius:6px}
+    input[type="number"]{width:80px;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    button{background:var(--accent);border:0;padding:8px 12px;border-radius:8px;color:#04202a;cursor:pointer;font-weight:600}
+    button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .result{padding:16px;border-radius:10px;background:linear-gradient(180deg, rgba(6,182,212,0.06), rgba(255,255,255,0.02));margin-top:12px}
+    .role{font-weight:700;font-size:1.05rem}
+    .small{font-size:0.9rem;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    footer{margin-top:18px;color:var(--muted);font-size:0.9rem}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left}
+    .desc{margin-top:10px;padding:10px;border-left:3px solid var(--accent);background:rgba(255,255,255,0.02);border-radius:6px}
+    .error{color:#ffb4b4;background:rgba(255,16,16,0.04);padding:8px;border-radius:6px;margin-top:8px}
+    @media (max-width:520px){body{padding:12px}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Test Belbina — interaktywny (anonimowy, offline)</h1>
+    </header>
+
+    <div class="card">
+      <p class="small">Rozdziel **dokładnie 10 punktów** w każdej z 7 sekcji pomiędzy opcje a–h. Test działa w przeglądarce — nie wysyła danych nigdzie. Po zatwierdzeniu wynik pojawi się na tej samej stronie.</p>
+
+      <form id="testForm">
+        <div id="questions"></div>
+      </form>
+
+      <div class="controls">
+        <button id="checkBtn">Sprawdź</button>
+        <button type="button" class="secondary" id="resetBtn">Reset</button>
+      </div>
+
+      <div id="resultArea"></div>
+    </div>
+
+    <footer class="small">Gotowe — możesz wgrać ten plik na Netlify / GitHub Pages / Google Sites i udostępnić link uczniom. Test jest anonimowy i wielokrotnego użytku.</footer>
+  </div>
+
+  <script>
+    // --- full test data ---
+    const sections = [
+      {
+        id:1, title: '1. Myślę, że na mój wkład w pracę zespołu składa się ...',
+        items: [
+          'moja zdolność szybkiego dostrzegania i wykorzystywania nowych możliwości;',
+          'umiejętność współpracy z różnego typu osobami;',
+          'generowanie pomysłów, które jest jedną z moich naturalnych właściwości;',
+          'to, że potrafię oddać głos innym, jeżeli widzę, że maja coś wartościowego co mogą wnieść do pracy grupy;',
+          'moja efektywność, zdolność do „podążania do przodu”, powodująca doprowadzenie sprawy do końca;',
+          'jeżeli coś może w efekcie doprowadzić grupę do wartościowego rezultatu robię to, nawet kosztem czasowej niepopularności;',
+          'moje wyczucie tego, co jest realne i możliwe do wykonania;',
+          'to, że potrafię bez uprzedzeń czy nastawień wziąć pod uwagę różne, alternatywne metody działania, różne drogi prowadzące do rozwiązań.'
+        ]
+      },
+      {
+        id:2, title: '2. To, co mi głównie przeszkadza w pracy w zespole, to ...',
+        items:[
+          'zła organizacja i złe prowadzenie spotkań;',
+          'gdy osoby, które mają coś ważnego do powiedzenia nie są dopuszczane do głosu przez innych;',
+          'że, gdy pojawią się nowe idee ja zbytnio się rozpalam i rozgaduję, podczas gdy grupa idzie do przodu;',
+          'mój obiektywny punkt widzenia, który utrudnia mi przyłączenie się z entuzjazmem i pełną gotowością do kolegów;',
+          'jestem postrzegany jako zbytnio naciskający i autorytarny w sytuacjach, gdy pojawia się potrzeba konkretnych dokonań;',
+          'jest mi trudno kierować zespołem, może dlatego, że jestem zbytnio wrażliwy na atmosferę grupy;',
+          'mam skłonność do tego, aby zbytnio angażować się myślowo w nowe pomysły przez to tracę kontakt z tym co się dzieje;',
+          'moi koledzy postrzegają mnie jako niepotrzebnie zamartwiającego się detalami i rozważeniem tego, że coś się może nie udać.'
+        ]
+      },
+      {
+        id:3, title: '3. Kiedy jestem zaangażowany w projekt wspólnie z innymi:',
+        items:[
+          'zwykle potrafię wpływać na innych bez wywierania presji;',
+          'moja czujność zapobiega popełnianiu błędów czy zaniedbań;',
+          'często wywieram nacisk na podejmowanie działań w celu uniknięcia straty czasu lub w trosce o to, aby nie zagubić głównego tematu;',
+          'można liczyć na to, że wniosę coś oryginalnego;',
+          'jestem zawsze gotów wesprzeć czyjąś sugestię, jeżeli jest ona korzystna dla wspólnego interesu;',
+          'zawsze poszukuję nowych trendów, świeżych pomysłów, możliwości rozwoju;',
+          'moja zdolność trzeźwej oceny sytuacji pomaga grupie w podejmowaniu właściwych decyzji;',
+          'można polegać na tym, że sprawdzę, czy całość pracy jest dobrze zorganizowana.'
+        ]
+      },
+      {
+        id:4, title: '4. Moje charakterystyczne podejście do pracy w zespole polega na tym, że ...',
+        items:[
+          'jestem szczególnie zainteresowany poznaniem innych osób;',
+          'nie mam oporów przed rzucaniem wyzwania poglądom innych i byciem w mniejszości w związku z właściwymi poglądami;',
+          'zazwyczaj znajduję dobre argumenty dla obalenia nierozsądnej propozycji;',
+          'myślę, że mam talent do wdrażania, wprowadzania w życie planów opracowanych przez zespół;',
+          'mam tendencję do pomijania rzeczy oczywistych i wychodzenia z czymś nieoczekiwanym;',
+          'wnoszę trochę perfekcjonizmu do każdego działania, jakie podejmuję w zespole;',
+          'chętnie nawiązuję pożyteczne kontakty poza grupą;',
+          'chociaż jestem zainteresowany różnymi punktami widzenia, nie waham się z podjęciem decyzji, jeżeli musi być ona podjęta.'
+        ]
+      },
+      {
+        id:5, title: '5. W swoich działaniach szczególnie lubię ...',
+        items:[
+          'analizować sytuację i rozważać wszystkie możliwości wyboru;',
+          'znajdować praktyczne, skuteczne rozwiązania problemów;',
+          'umacniać dobre więzi w zespole, budować współpracę;',
+          'mieć możliwość wywierania wpływu na decyzję;',
+          'spotykać ludzi, którzy mają coś nowego do zaproponowania;',
+          'skłaniać innych do porozumienia w sprawie przyjęcia wspólnego kierunku działania;',
+          'móc skoncentrować się w pełni na swoim wycinku zadań;',
+          'mieć takie pole działania, które pozwala mi wykorzystać wyobraźnię.'
+        ]
+      },
+      {
+        id:6, title: '6. Kiedy nagle dostanę trudne zadanie, mało czasu i nieprzychylnych ludzi ...',
+        items:[
+          'chciałbym móc zaszyć się w kącie i samemu znaleźć wyjście z impasu przed rozpoczęciem działania;',
+          'nawiąze natychmiast kontakt z osobami o najbardziej pozytywnym podejściu;',
+          'szukałbym sposobu na zredukowanie własnego obciążenia zadaniem poprzez dobrze przemyślane rozłożenie go na pozostałych;',
+          'moje naturalne poczucie presji czasu, czy presji sytuacji daje mi pewność, że zmieszczę się w czasie;',
+          'wierzę, że pozostanę spokojny i zachowam zdolność do logicznego myślenia;',
+          'pomimo presji mogę pracować systematycznie trzymając się obranego kierunku;',
+          'byłbym gotowy przejąć kierownictwo w sytuacji gdy czuję, że grupa nie robi postępów;',
+          'otworzyłbym dyskusją, aby podzielić się pomysłami i spowodować, by ruszyć coś do przodu.'
+        ]
+      },
+      {
+        id:7, title: '7. Mam problemy w pracy w grupie w związku z tym, że ...',
+        items:[
+          'okazuję niecierpliwość w stosunku do tych, którzy blokują pójście do przodu;',
+          'jestem krytykowny za zbytnią drobiazgowość, powolność w decyzjach, zbytnie analizowanie i nieumiejętność oparcia się na własnej intuicji;',
+          'przywiązuję zbyt dużą wagę do poprawności i jakości, co często opóźnia realizację zadań;',
+          'mam skłonności do szybkiego nudzenia się, mobilizują mnie do działania tylko intrygujące tematy;',
+          'mam trudność z rozpoczęciem działania, dopóki cele nie są jasno określone;',
+          'czasami mam kłopoty z wyjaśnieniem innym złożonych, skomplikowanych pomysłów, które mi się nasunęły;',
+          'jestem świadomy, że wymagam od innych tego, czego sam nie mogę zrobić;',
+          'waham się wypowiadać swoje argumenty, kiedy stoję naprzeciw realnej opozycji.'
+        ]
+      }
+    ];
+
+    // mapping from PDF: for each section list letters for roles PR..FP
+    const mapping = {
+      1: ['g','d','f','c','a','h','b','e'],
+      2: ['a','b','e','g','c','d','f','h'],
+      3: ['h','a','c','d','f','g','e','b'],
+      4: ['d','h','b','e','g','c','a','f'],
+      5: ['b','f','d','h','e','a','c','g'],
+      6: ['f','c','g','a','h','e','b','d'],
+      7: ['e','g','a','f','d','b','h','c']
+    };
+
+    const roles = ['PR','KL','AK','KP','WŁ','RA','DZ','FP'];
+    const roleNames = {
+      'PR':'Praktyczny Realizator',
+      'KL':'Koordynujący Lider',
+      'AK':'Ambitny Komendant',
+      'KP':'Kreatywny Pomysłodawca',
+      'WŁ':'Wszędobylski Łącznik',
+      'RA':'Racjonalny Analityk',
+      'DZ':'Dusza Zespołu',
+      'FP':'Finiszujący Perfekcjonista'
+    };
+
+    const roleDescriptions = {
+      'PR': 'To osoba praktyczna, operatywna, nastawiona na konkretne działanie. Potrafi ocenić realność i szanse powodzenia projektu oraz wdrażać plany i marzenia w czyn. Jest doskonałym wykonawcą projektów wymyślonych przez innych. W pracy zespołowej koncentruje się na organizowaniu pracy i praktycznym wykorzystaniu zasobów zespołu.',
+      'KL': 'To ktoś potrafiący zwiększyć efektywność zespołu poprzez właściwą koordynację działań jej członków. Zachęca, przekonuje, godzi kontrowersje i słucha opinii innych. Angażuje członków zespołu, aby jak najlepiej wykorzystać ich możliwości.',
+      'AK': 'Osoba o wysokiej motywacji i potrzebie osiągnięć, próbująca zmusić zespół do stawiania ambitnych celów i intensywnego działania. Często stosuje ostrą krytykę, wymuszanie, co rodzi konflikty, ale też prowadzi do wysokiej skuteczności.',
+      'KP': 'Kreatywna osoba, opierająca się na wyobraźni i niestandardowym podejściu do zagadnień. Lubi pracować samodzielnie nad nowatorskimi rozwiązaniami. Często ignoruje ograniczenia i procedury, co może prowadzić do napięć z praktycznymi członkami zespołu.',
+      'WŁ': 'Osoba posiadająca liczne kontakty i zdolności interpersonalne. Entuzjastyczna, przyjazna, dobrze odbierana przez innych. Potrafi docierać do informacji, negocjować i reprezentować zespół na zewnątrz.',
+      'RA': 'Osoba o wnikliwości i wysokiej inteligencji, krytyczna i obiektywna. Zazwyczaj obserwuje z boku, interweniuje przy podejmowaniu decyzji. Pomaga grupie w racjonalnej analizie i wypracowaniu najlepszego rozwiązania.',
+      'DZ': 'Osoba ciepła, łatwo nawiązująca kontakty, wrażliwa na emocje innych. Dba o dobrą atmosferę w zespole, łagodzi konflikty, pomaga w rozwiązywaniu problemów interpersonalnych. Przydatna w sytuacjach napięć i sporów.',
+      'FP': 'Osoba skrupulatna, zdyscyplinowana, dbająca o jakość i szczegóły. Czuje odpowiedzialność za wynik pracy zespołu, często niepokoi się o efekty, dba o dopięcie wszystkiego na ostatni guzik.'
+    };
+
+    // build form
+    const qContainer = document.getElementById('questions');
+    sections.forEach(sec => {
+      const box = document.createElement('div');
+      box.className = 'card q';
+      box.innerHTML = `<h3 style="margin-top:0">${sec.id}. ${sec.title}</h3>`;
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+
+      sec.items.forEach((txt, idx) => {
+        const letter = String.fromCharCode(97 + idx); // a..h
+        const col = document.createElement('div');
+        col.innerHTML = `
+          <label title="${txt}"><strong>${letter})</strong> ${txt}
+            <div style="margin-top:6px"><input type="number" min="0" max="10" step="1" value="0" data-sec="${sec.id}" data-letter="${letter}" /> punkty</div>
+          </label>
+        `;
+        grid.appendChild(col);
+      });
+
+      const hint = document.createElement('div');
+      hint.className = 'small';
+      hint.textContent = 'Suma dla tej sekcji musi wynosić 10 punktów.';
+
+      box.appendChild(grid);
+      box.appendChild(hint);
+      qContainer.appendChild(box);
+    });
+
+    function readSectionTotals() {
+      const totals = {};
+      for (let s of sections) totals[s.id]=0;
+      document.querySelectorAll('#testForm input[type=number]').forEach(inp=>{
+        const s = Number(inp.dataset.sec);
+        const val = parseInt(inp.value) || 0;
+        totals[s] += val;
+      });
+      return totals;
+    }
+
+    function validateAllStrict() {
+      const totals = readSectionTotals();
+      const bad = [];
+      for (let s in totals) {
+        if (totals[s] !== 10) bad.push({sec:s, sum:totals[s]});
+      }
+      return bad;
+    }
+
+    function computeScores() {
+      const scores = {PR:0,KL:0,AK:0,KP:0,'WŁ':0,RA:0,DZ:0,FP:0};
+      document.querySelectorAll('#testForm input[type=number]').forEach(inp=>{
+        const sec = Number(inp.dataset.sec);
+        const letter = inp.dataset.letter; // 'a'..'h'
+        const val = parseInt(inp.value) || 0;
+        const map = mapping[sec];
+        map.forEach((ltr, idx)=>{
+          if (ltr === letter) {
+            const role = roles[idx];
+            scores[role] += val;
+          }
+        });
+      });
+      return scores;
+    }
+
+    function renderDescriptions(dominant, all=false) {
+      const container = document.createElement('div');
+      if(all){
+        container.innerHTML = '<h3>Opisy wszystkich ról</h3>';
+        roles.forEach(r => {
+          const div = document.createElement('div');
+          div.className = 'desc';
+          div.innerHTML = `<strong>${r} — ${roleNames[r]}</strong><br>${roleDescriptions[r]}`;
+          container.appendChild(div);
+        });
+      } else {
+        container.innerHTML = '<h3>Opis Twoich dominujących ról</h3>';
+        dominant.forEach(r => {
+          const div = document.createElement('div');
+          div.className = 'desc';
+          div.innerHTML = `<strong>${r} — ${roleNames[r]}</strong><br>${roleDescriptions[r]}`;
+          container.appendChild(div);
+        });
+      }
+      return container;
+    }
+
+    function renderResults(scores) {
+      const area = document.getElementById('resultArea');
+      area.innerHTML = '';
+
+      const sumTable = document.createElement('div');
+      sumTable.className='result';
+
+      let html = '<h3>Wyniki (punkty dla ról)</h3>';
+      html += '<table><thead><tr><th>Rola</th><th>Punkty</th><th>Nazwa</th></tr></thead><tbody>';
+      roles.forEach(r=>{
+        html += `<tr><td>${r}</td><td><strong>${scores[r]}</strong></td><td>${roleNames[r]}</td></tr>`;
+      });
+      html += '</tbody></table>';
+
+      const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+      const topScore = sorted[0][1];
+      const dominant = sorted.filter(x=>x[1]===topScore).map(x=>x[0]);
+
+      html += `<div style="margin-top:12px"><strong>Rola dominująca:</strong> ${dominant.map(d=>d+' ('+roleNames[d]+')').join(', ')} — ${topScore} pkt</div>`;
+
+      sumTable.innerHTML = html;
+      area.appendChild(sumTable);
+
+      const descs = renderDescriptions(dominant);
+      area.appendChild(descs);
+
+      const showAllBtn = document.createElement('button');
+      showAllBtn.textContent = 'Pokaż opisy wszystkich ról';
+      showAllBtn.className = 'secondary';
+      showAllBtn.style.marginTop = '12px';
+      showAllBtn.addEventListener('click', ()=>{
+        const existing = document.getElementById('allRoles');
+        if(existing){
+          // toggle hide/show
+          existing.remove();
+          showAllBtn.textContent = 'Pokaż opisy wszystkich ról';
+        } else {
+          const allDescs = renderDescriptions([], true);
+          allDescs.id = 'allRoles';
+          area.appendChild(allDescs);
+          showAllBtn.textContent = 'Ukryj opisy wszystkich ról';
+        }
+      });
+      area.appendChild(showAllBtn);
+
+      return {dominant, sorted};
+    }
+
+    // strict validation: require exact 10 per section before computing
+    document.getElementById('checkBtn').addEventListener('click', (e)=>{
+      e.preventDefault();
+      const bad = validateAllStrict();
+      const area = document.getElementById('resultArea');
+      // clear previous errors
+      const prevErr = document.getElementById('validationError');
+      if(prevErr) prevErr.remove();
+      if(bad.length){
+        const err = document.createElement('div');
+        err.id = 'validationError';
+        err.className = 'error';
+        err.innerHTML = '<strong>Błąd walidacji:</strong> W kilku sekcjach suma punktów różni się od 10. Sprawdź sekcje: <br>' + bad.map(b=>`Sekcja ${b.sec}: suma = ${b.sum}`).join('<br>');
+        area.prepend(err);
+        // scroll to error
+        err.scrollIntoView({behavior:'smooth'});
+        return;
+      }
+      // compute and render
+      const scores = computeScores();
+      renderResults(scores);
+      // scroll to results
+      document.getElementById('resultArea').scrollIntoView({behavior:'smooth'});
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', ()=>{
+      if(!confirm('Resetować wszystkie pola?')) return;
+      document.querySelectorAll('#testForm input[type=number]').forEach(inp=>inp.value='0');
+      const area = document.getElementById('resultArea');
+      area.innerHTML = '';
+      const prevErr = document.getElementById('validationError');
+      if(prevErr) prevErr.remove();
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  </script>
+</body>
+</html>
